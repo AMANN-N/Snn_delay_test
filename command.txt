@@ -1,0 +1,17 @@
+git clone https://github.com/AMANN-N/Snn_delay_test
+cd Snn_delay_test/
+mkdir -p Datasets/SHD
+mkdir -p Datasets/SSC
+
+
+*********Go back to Snn_delay_test directory
+
+git clone https://github.com/fangwei123456/spikingjelly.git
+cd spikingjelly
+python setup.py install 
+
+
+*****Go back to Snn_delay_test directory
+
+pip install -r requirements.txt
+python main.py
