@@ -1,0 +1,9 @@
+=====> Epoch 0 :
+Loss Train = 4.778  |  Acc Train = 5.88%
+Loss Valid = 2.987  |  Acc Valid = 6.82%  |  Best Acc Valid = 6.82%
+# Saving best Metric model...
+# Saving best Loss model...
+=====> Epoch 1 :
+Loss Train = 3.956  |  Acc Train = 8.75%
+Loss Valid = 2.890  |  Acc Valid = 7.35%  |  Best Acc Valid = 7.35%
+# Saving best Metric model...
