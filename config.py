@@ -142,7 +142,7 @@ class Config:
     wandb_token = '82eefce4f8013b02630c61cf2d19ef4bcb0a80b4'
     wandb_project_name = 'SNN_Delays'
 
-    run_name = 'SSC_Run_150epochs'
+    run_name = 'SS_RUN_new'
 
 
     run_info = f'||{model_type}||{dataset}||{time_step}ms||bins={n_bins}'
