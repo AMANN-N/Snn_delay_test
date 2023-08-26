@@ -87,7 +87,7 @@ class Config:
     ################################################
     DCLSversion = 'gauss' if model_type =='snn_delays' else 'max'
     decrease_sig_method = 'exp'
-    kernel_count = 1
+    kernel_count = 4
 
     max_delay = 250//time_step
     max_delay = max_delay if max_delay%2==1 else max_delay+1 # to make kernel_size an odd number
