@@ -15,5 +15,5 @@
    mkdir -p Datasets/SHD
    mkdir -p Datasets/SSC
 
-6. python main.py
+7. python main.py
     
