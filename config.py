@@ -6,22 +6,19 @@ class Config:
     #            General configuration             #
     ################################################
     debug = False
-
-    # dataset could be set to either 'shd or 'ssc', change datasets_path accordingly.
-    dataset = 'ssc'                    
-    datasets_path = 'Datasets/SSC'
+    #datasets_path = 'Datasets/SHD'
 
     seed = 0
 
-    # model type could be set to : 'snn_delays' |  'snn_delays_lr0' |  'snn'
-    model_type = 'snn_delays'          
-    
+    model_type = 'snn_delays'          # 'ann', 'snn', 'snn_delays' 'snn_delays_lr0'
+    dataset = 'esc50'                    # 'shd', 'ssc'
 
     time_step = 10
     n_bins = 5
 
     epochs = 150
     batch_size = 256
+
 
     ################################################
     #               Model Achitecture              #
@@ -33,11 +30,11 @@ class Config:
     stateful_synapse = False
     stateful_synapse_learnable = False
 
-    n_inputs = 700//n_bins
+    n_inputs = 800//n_bins
     n_hidden_layers = 2
-    n_hidden_neurons = 256 
-    n_outputs = 20 if dataset == 'shd' else 35
-
+    n_hidden_neurons = 256
+    #n_outputs = 20 if dataset == 'shd' else 35
+    n_outputs = 50
     sparsity_p = 0
 
     dropout_p = 0.4
@@ -85,15 +82,14 @@ class Config:
     ################################################
     #                    Delays                    #
     ################################################
-    DCLSversion = 'gauss' if model_type =='snn_delays' else 'max'
+    DCLSversion = 'gauss'
     decrease_sig_method = 'exp'
-    kernel_count = 4
+    kernel_count = 1
 
     max_delay = 250//time_step
     max_delay = max_delay if max_delay%2==1 else max_delay+1 # to make kernel_size an odd number
     
-    # For constant sigma without the decreasing policy, set model_type == 'snn_delays' and sigInit = 0.23 and final_epoch = 0
-    sigInit = max_delay // 2        if model_type == 'snn_delays' else 0
+    sigInit = max_delay // 2        if model_type == 'snn_delays' else 0.23
     final_epoch = (1*epochs)//4     if model_type == 'snn_delays' else 0
 
 
@@ -107,8 +103,7 @@ class Config:
     ################################################
     #                 Fine-tuning                  #
     ################################################
-    # BELOW IS NOT USED, NEED TO UPDATE
-
+    
     lr_w_finetuning = 1e-4
     max_lr_w_finetuning = 1.2 * lr_w_finetuning
 
@@ -136,19 +131,16 @@ class Config:
     #############################################
     #                      Wandb                #
     #############################################
-    # If use_wand is set to True, specify your wandb api token in wandb_token and the project and run names. 
-
     use_wandb = True
-    wandb_token = '82eefce4f8013b02630c61cf2d19ef4bcb0a80b4'
-    wandb_project_name = 'SNN_Delays'
+    wandb_project_name = 'ESC50_Distillation'
 
-    run_name = 'SS_RUN_new'
 
+    run_name = 'Distillation_run_2=original_esc50_on_snn'
 
     run_info = f'||{model_type}||{dataset}||{time_step}ms||bins={n_bins}'
 
     #wandb_run_name = run_name + f'||seed={seed}' + run_info
-    wandb_run_name = run_name 
+    wandb_run_name = run_name
     wandb_group_name = run_name + run_info
 
 
