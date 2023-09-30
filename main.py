@@ -1,6 +1,8 @@
-if __name__ == '__main__':    
+
+if __name__ == '__main__':
     #from datasets import SHD_dataloaders
-    from datasets import SSC_dataloaders
+    from datasets import ESC_50
+    #from datasets import SSC_dataloaders
     from config import Config
     from snn_delays import SnnDelays
     import torch
@@ -11,14 +13,12 @@ if __name__ == '__main__':
 
     config = Config()
 
-    train_loader, valid_loader , test_loader = SSC_dataloaders(config)
 
-    if config.model_type == 'snn':
-        model = SNN(config).to(device)
-    else:
-        model = SnnDelays(config).to(device)
+    #train_loader, valid_loader= SHD_dataloaders(config) 
+    train_loader , val_loader , test_loader  = ESC_50(config)
+    #model = SNN(config).to(device)
+    model = SnnDelays(config).to(device)
 
-    if config.model_type == 'snn_delays_lr0':
-        model.round_pos()
+    #model.round_pos()
 
-    model.train_model(train_loader, valid_loader, test_loader , device)
+    model.train_model(train_loader, val_loader, test_loader , device)
