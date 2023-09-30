@@ -5,9 +5,94 @@ import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
 
+#from ..test import all_logits_tensor
+
 from config import Config
 from utils import set_seed
 from datasets import Augs
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+"""
+Teacher Model logits calculation
+
+"""
+
+from hear21passt.base import get_basic_model,get_model_passt
+import torch
+from datasets import ESC_502
+#from snn_delay.config import Config
+
+
+
+def calculate_teacher_logits():
+
+    model = get_basic_model(mode="logits")
+    # replace the transformer with one that outputs 50 classes
+    model.net = get_model_passt(arch="passt_s_swa_p16_128_ap476",  n_classes=50)
+    state_dict = torch.load('/home/amanrs/PaSST/pretrained_model/esc50-passt-s-n-f128-p16-s10-fold4-acc.987.pt')
+    config = Config()
+    train_loader , val_loader , test_loader  = ESC_502(config)
+    model.net.load_state_dict(state_dict)
+
+    # example inference
+    model.eval()
+    model = model.cuda()
+
+    num_batches = 5
+    batch_size = 256
+    num_classes = 50
+    
+
+    # Initialize a tensor to store the logits
+    all_logits_tensor = torch.zeros(5 , 256 , 50)
+    #for audio_wave , target , _ in test_loader:
+    for i, (x, y, _) in enumerate(train_loader):
+        with torch.no_grad():
+            #print(x.shape)
+            x = x.squeeze(dim=1)
+            logits = model(x.cuda())
+            #print(logits.shape)
+        all_logits_tensor[i] = logits
+    
+    return all_logits_tensor
+
+#print(all_logits_tensor.shape)
+#print(all_logits_tensor[0])
+#print(all_logits_tensor[1])
+#print(all_logits_tensor[2])
+#print(all_logits_tensor[3])
+#print(all_logits_tensor[4])
+
+#teacher_logits = calculate_teacher_logits()
+#torch.save(teacher_logits, 'teacher_logits.pt')
+T=4
+teacher_logits = calculate_teacher_logits()
+softmax = nn.functional.Softmax(dim=2)
+teacher_logits_target = softmax(teacher_logits/T)
+
+#print(teacher_logits.shape)
+
+
+
+
+
 
 
 class Model(nn.Module):
@@ -80,7 +165,7 @@ class Model(nn.Module):
     
 
 
-    def calc_loss(self, output, y):
+    def calc_loss(self, output, y ):
 
         if self.config.loss == 'mean': m = torch.mean(output, 0)
         elif self.config.loss == 'max': m, _ = torch.max(output, 0)
@@ -158,6 +243,9 @@ class Model(nn.Module):
 
 
 
+
+
+
     def train_model(self, train_loader, valid_loader, test_loader, device):
         
         #######################################################################################
@@ -173,7 +261,7 @@ class Model(nn.Module):
             
             cfg = {k:v for k,v in dict(vars(Config)).items() if '__' not in k}
 
-            wandb.login(key=self.config.wandb_token)
+            wandb.login(key="82eefce4f8013b02630c61cf2d19ef4bcb0a80b4")
 
             wandb.init(
                 project= self.config.wandb_project_name,
@@ -204,6 +292,7 @@ class Model(nn.Module):
             loss_batch, metric_batch = [], []
             pre_pos = pre_pos_epoch.copy()
             for i, (x, y, _) in enumerate(train_loader):
+
                 # x for shd and ssc is: (batch, time, neurons)
 
                 y = F.one_hot(y, self.config.n_outputs).float()
@@ -217,7 +306,24 @@ class Model(nn.Module):
                 for opt in optimizers: opt.zero_grad()
                 
                 output = self.forward(x)
-                loss = self.calc_loss(output, y)
+                loss1 = self.calc_loss(output, y)
+
+                T=4
+                #teacher_logits.to(device)
+                # teacher_logits_target has already been softmax and /T
+                
+                soft_prob = nn.functional.log_softmax(output / T, dim=2).to(device)
+                soft_prob = torch.sum(soft_prob , 0)
+                
+                #print(teacher_logits_target[i].shape)
+                #print(soft_prob.shape)
+
+                loss2 = -torch.sum(teacher_logits_target[i].to(device) * soft_prob) / soft_prob.size()[0] * (T**2)
+
+
+
+                #loss2 = self.calc_loss(output , teacher_logits[i].to(device)) * (T**2)
+                loss = (0.25 * loss2) + (0.75 * loss1)
 
                 loss.backward()
                 for opt in optimizers: opt.step()
