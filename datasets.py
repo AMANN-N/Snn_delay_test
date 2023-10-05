@@ -329,10 +329,11 @@ class BinnedSpikingSpeechCommands(SpikingSpeechCommands):
 
 
 
-
-
-
-
+#import sys
+#sys.path.append('/home/amanrs/PaSST/')
+#from models.preprocess import AugmentMelSTFT
+# Now you can import functions from files in that directory
+#from external_file import function_name
 
 
 
@@ -414,19 +415,27 @@ class PadOrTruncate(object):
 #this function is being passed a tensor which represents a waveform, sample rate of the audio is 44100 and the audio is 5 seconds long
 def build_transform(is_train):
     sample_rate= 32000       #figure out if this should be 44100 or 220500 and below *5
-    window_size=320
-    hop_length=220
-    n_mels=160
-    f_min=50
-    f_max=14000
+    window_size= 320
+    hop_length= 220
+    n_mels= 160
+    f_min= 50
+    f_max= 14000
 
     t = [PadOrTruncate(sample_rate*5),
          Resample(sample_rate, sample_rate // 2)]
     
-    
+    #n_mels=128, sr=32000, win_length=800, hopsize=320, n_fft=1024, freqm=48,
+    #                            timem=80,
+    #                             htk=False, fmin=0.0, fmax=None, norm=1, fmin_aug_range=10,
+    #                             fmax_aug_range=2000
 
-
+    # now the waveform is at sample_rate = 32k and length is 5
     t.append(Spectrogram(n_fft=window_size, hop_length=hop_length, power=2))
+    #t.append(AugmentMelSTFT(n_mels=128, sr=32000, win_length=800, hopsize=320, n_fft=1024, freqm=48,
+    #                             timem=80,
+    #                             htk=False, fmin=50, fmax=14000, norm=1, fmin_aug_range=10,
+    #                             fmax_aug_range=2000))
+
 
     if is_train:
         pass
@@ -473,7 +482,7 @@ class ESC50Dataset(Dataset):
         try:
             #print(f"Loading audio file: {audio_path}")
             waveform, _ = torchaudio.load(audio_path)
-            #print(waveform.shape) = 1 x 16k
+            #print(waveform.shape)       #= 1 x 16k
         except Exception as e:
             #print(f"Error loading audio file '{audio_path}': {e}")
             return None, None
@@ -513,14 +522,6 @@ def ESC_50(config):
   train_filenames, val_filenames, test_filenames, train_labels, val_labels, test_labels = load_and_preprocess_data(data_path)
   # Define transforms for data augmentation
 
-  #print("Before transform - Data Type:", type(spec_db) , "Shape:", spec_db.shape) 
-  #print(len(train_filenames))
-  #print(len(train_labels))
-  #print(len(test_filenames))
-  #print(len(test_labels))
-  #print(len(val_filenames))
-  #print(len(val_labels))
-  #print(val_labels)
 
   train_dataset = ESC50Dataset(train_filenames, train_labels,'training', transform=build_transform(True), target_transform=target_transform_fn)
   valid_dataset = ESC50Dataset(val_filenames,val_labels ,'validation', transform=build_transform(True), target_transform=target_transform_fn)
@@ -531,11 +532,6 @@ def ESC_50(config):
   train_loader = DataLoader(train_dataset, batch_size=config.batch_size, shuffle=True, num_workers=4)
   valid_loader = DataLoader(valid_dataset, batch_size=config.batch_size, num_workers=4)
   test_loader = DataLoader(test_dataset, batch_size=config.batch_size, num_workers=4)
-  #print(test_loader.size())
-
-  #for i, (x, y, _) in enumerate(valid_loader):
-  #  print(x.shape)
-  #  print(y.shape)
 
   return train_loader, valid_loader, test_loader
 
@@ -632,14 +628,6 @@ def ESC_502(config):
   train_filenames, val_filenames, test_filenames, train_labels, val_labels, test_labels = load_and_preprocess_data(data_path)
   # Define transforms for data augmentation
 
-  #print("Before transform - Data Type:", type(spec_db) , "Shape:", spec_db.shape) 
-  #print(len(train_filenames))
-  #print(len(train_labels))
-  #print(len(test_filenames))
-  #print(len(test_labels))
-  #print(len(val_filenames))
-  #print(len(val_labels))
-  #print(val_labels)
 
   train_dataset = ESC50Dataset2(train_filenames, train_labels,'training', transform=build_transform(False), target_transform=target_transform_fn)
   valid_dataset = ESC50Dataset2(val_filenames,val_labels ,'validation', transform=build_transform(False), target_transform=target_transform_fn)
