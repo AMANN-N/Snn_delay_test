@@ -19,16 +19,6 @@ from datasets import Augs
 
 
 
-
-
-
-
-
-
-
-
-
-
 """
 Teacher Model logits calculation
 
@@ -58,37 +48,23 @@ def calculate_teacher_logits():
     num_batches = 5
     batch_size = 256
     num_classes = 50
-    
 
     # Initialize a tensor to store the logits
     all_logits_tensor = torch.zeros(5 , 256 , 50)
     #for audio_wave , target , _ in test_loader:
-    for i, (x, y, _) in enumerate(train_loader):
+    for i, (x, y, _) in enumerate(train_loader):        # x = 256x1x160000
         with torch.no_grad():
             #print(x.shape)
-            x = x.squeeze(dim=1)
+            x = x.squeeze(dim=1)            # x = 256 x 160 000
             logits = model(x.cuda())
-            #print(logits.shape)
+            #print(logits.shape)            # logits = 256 x 50 
         all_logits_tensor[i] = logits
     
     return all_logits_tensor
 
-#print(all_logits_tensor.shape)
-#print(all_logits_tensor[0])
-#print(all_logits_tensor[1])
-#print(all_logits_tensor[2])
-#print(all_logits_tensor[3])
-#print(all_logits_tensor[4])
 
-#teacher_logits = calculate_teacher_logits()
-#torch.save(teacher_logits, 'teacher_logits.pt')
-T=4
+T=2
 teacher_logits = calculate_teacher_logits()
-softmax = nn.functional.Softmax(dim=2)
-teacher_logits_target = softmax(teacher_logits/T)
-
-#print(teacher_logits.shape)
-
 
 
 
@@ -186,7 +162,30 @@ class Model(nn.Module):
             #loss = loss_fn(log_p_y, y)
 
             return loss
-        
+
+
+    def calc_loss2(self, output, y ):
+
+        if self.config.loss == 'mean': m = torch.mean(output, 0)
+        elif self.config.loss == 'max': m, _ = torch.max(output, 0)
+        elif self.config.loss == 'spike_count': m = torch.sum(output, 0)
+        elif self.config.loss == 'sum': 
+            softmax_fn = nn.Softmax(dim=2)
+            #softmax_fn = nn.LogSoftmax(dim=2) 
+            m = torch.sum(softmax_fn(output), 0)
+
+        # probably better to add it in init, or in general do it one time only
+        if self.config.loss_fn == 'CEloss':
+            #compare using this to directly using nn.CrossEntropyLoss
+
+            CEloss = nn.CrossEntropyLoss()
+            loss = CEloss(m, y)
+            #log_softmax_fn = nn.LogSoftmax(dim=1) 
+            #loss_fn = nn.NLLLoss()
+            #log_p_y = log_softmax_fn(m)
+            #loss = loss_fn(log_p_y, y)
+
+            return loss
 
 
     def calc_metric(self, output, y):
@@ -279,6 +278,10 @@ class Model(nn.Module):
 
 
         loss_epochs = {'train':[], 'valid':[]}
+
+        ##loss1_epochs = {'train':[], 'valid':[]}
+        ##loss2_epochs = {'train':[], 'valid':[]}    
+
         metric_epochs = {'train':[], 'valid':[]}
         best_metric_val = 0 #1e6 
         best_loss_val = 1e6 
@@ -290,40 +293,46 @@ class Model(nn.Module):
             self.train()
             #last element in the tuple corresponds to the collate_fn return
             loss_batch, metric_batch = [], []
+            ##loss1_batch , loss2_batch = [] , []
             pre_pos = pre_pos_epoch.copy()
             for i, (x, y, _) in enumerate(train_loader):
 
                 # x for shd and ssc is: (batch, time, neurons)
 
+            
                 y = F.one_hot(y, self.config.n_outputs).float()
 
                 if self.config.augment:
                     x, y = augmentations(x, y)
 
-                x = x.permute(1,0,2).float().to(device)  #(time, batch, neurons)
+                x = x.permute(1,0,2).float().to(device)  #(time, batch, neurons)  
                 y = y.to(device)
 
                 for opt in optimizers: opt.zero_grad()
                 
-                output = self.forward(x)
-                loss1 = self.calc_loss(output, y)
-
-                T=4
-                #teacher_logits.to(device)
-                # teacher_logits_target has already been softmax and /T
-                
-                soft_prob = nn.functional.log_softmax(output / T, dim=2).to(device)
-                soft_prob = torch.sum(soft_prob , 0)
-                
-                #print(teacher_logits_target[i].shape)
-                #print(soft_prob.shape)
-
-                loss2 = -torch.sum(teacher_logits_target[i].to(device) * soft_prob) / soft_prob.size()[0] * (T**2)
+                output = self.forward(x)              
 
 
+                loss = self.calc_loss(output , y)     
 
-                #loss2 = self.calc_loss(output , teacher_logits[i].to(device)) * (T**2)
-                loss = (0.25 * loss2) + (0.75 * loss1)
+                #T=4                
+                #soft_prob = nn.functional.log_softmax(output / T, dim=2).to(device)
+                #soft_prob = torch.sum(soft_prob , 0)     
+
+                #soft_targets = nn.functional.softmax(teacher_logits[i]/T , dim=1).to(device)
+
+                #loss2 = -torch.sum(soft_targets * soft_prob) / soft_prob.size()[0] * (T**2)
+
+                ##op = (teacher_logits[i])
+                ##op = nn.functional.softmax(op/T , dim=1).to(device)
+
+                ##loss2 = self.calc_loss2(output/T , op) * (T**2)
+
+                #print(loss1)
+                #print(loss2)
+
+                ##loss = (0.05 * loss2) + (0.95 * loss1)
+
 
                 loss.backward()
                 for opt in optimizers: opt.step()
@@ -331,6 +340,9 @@ class Model(nn.Module):
                 metric = self.calc_metric(output, y)
 
                 loss_batch.append(loss.detach().cpu().item())
+                ##loss1_batch.append(loss1.detach().cpu().item())
+                ##loss2_batch.append(loss2.detach().cpu().item())
+
                 metric_batch.append(metric)
 
                 self.reset_model(train=True)
@@ -360,6 +372,10 @@ class Model(nn.Module):
 
 
             loss_epochs['train'].append(np.mean(loss_batch))
+
+            ##loss1_epochs['train'].append(np.mean(loss1_batch))
+            ##loss2_epochs['train'].append(np.mean(loss2_batch))
+
             metric_epochs['train'].append(np.mean(metric_batch))
 
             for scheduler in schedulers: scheduler.step()
@@ -379,7 +395,9 @@ class Model(nn.Module):
 
             ########################## Logging and Plotting  ##########################
 
-            print(f"=====> Epoch {epoch} : \nLoss Train = {loss_epochs['train'][-1]:.3f}  |  Acc Train = {100*metric_epochs['train'][-1]:.2f}%")
+            #print(f"=====> Epoch {epoch} : \nLoss Train = {loss_epochs['train'][-1]:.3f}  |   Loss1 Train = {loss1_epochs['train'][-1]:.3f}     |       Loss2 Train = {loss2_epochs['train'][-1]:.3f}     |   Acc Train = {100*metric_epochs['train'][-1]:.2f}%")
+            #print()
+            print(f"=====> Epoch {epoch} : \nLoss Train = {loss_epochs['train'][-1]:.3f}  |     Acc Train = {100*metric_epochs['train'][-1]:.2f}%")
             print(f"Loss Valid = {loss_epochs['valid'][-1]:.3f}  |  Acc Valid = {100*metric_epochs['valid'][-1]:.2f}%  |  Best Acc Valid = {100*max(metric_epochs['valid'][-1], best_metric_val):.2f}%")
 
 
@@ -393,7 +411,9 @@ class Model(nn.Module):
                 lr_pos = schedulers[1].get_last_lr()[0] if self.config.model_type == 'snn_delays' and self.config.scheduler_pos != 'none' else self.config.lr_pos
 
                 wandb_logs = {"Epoch":epoch,
-                              "loss_train":loss_epochs['train'][-1], 
+                              "loss_train":loss_epochs['train'][-1],
+                              ##"loss1_train":loss1_epochs['train'][-1],
+                              ##"loss2_train":loss2_epochs['train'][-1], 
                               "acc_train" : metric_epochs['train'][-1], 
                               "loss_valid" : loss_epochs['valid'][-1],
                               "acc_valid" : metric_epochs['valid'][-1],
