@@ -279,8 +279,8 @@ class Model(nn.Module):
 
         loss_epochs = {'train':[], 'valid':[]}
 
-        ##loss1_epochs = {'train':[], 'valid':[]}
-        ##loss2_epochs = {'train':[], 'valid':[]}    
+        loss1_epochs = {'train':[], 'valid':[]}
+        loss2_epochs = {'train':[], 'valid':[]}    
 
         metric_epochs = {'train':[], 'valid':[]}
         best_metric_val = 0 #1e6 
@@ -293,7 +293,7 @@ class Model(nn.Module):
             self.train()
             #last element in the tuple corresponds to the collate_fn return
             loss_batch, metric_batch = [], []
-            ##loss1_batch , loss2_batch = [] , []
+            loss1_batch , loss2_batch = [] , []
             pre_pos = pre_pos_epoch.copy()
             for i, (x, y, _) in enumerate(train_loader):
 
@@ -313,7 +313,7 @@ class Model(nn.Module):
                 output = self.forward(x)              
 
 
-                loss = self.calc_loss(output , y)     
+                loss1 = self.calc_loss(output , y)     
 
                 #T=4                
                 #soft_prob = nn.functional.log_softmax(output / T, dim=2).to(device)
@@ -323,15 +323,15 @@ class Model(nn.Module):
 
                 #loss2 = -torch.sum(soft_targets * soft_prob) / soft_prob.size()[0] * (T**2)
 
-                ##op = (teacher_logits[i])
-                ##op = nn.functional.softmax(op/T , dim=1).to(device)
+                op = (teacher_logits[i])
+                op = nn.functional.softmax(op/T , dim=1).to(device)
 
-                ##loss2 = self.calc_loss2(output/T , op) * (T**2)
+                loss2 = self.calc_loss2(output/T , op) * (T**2)
 
                 #print(loss1)
                 #print(loss2)
 
-                ##loss = (0.05 * loss2) + (0.95 * loss1)
+                loss = (0.05 * loss2) + (0.95 * loss1)
 
 
                 loss.backward()
@@ -340,8 +340,8 @@ class Model(nn.Module):
                 metric = self.calc_metric(output, y)
 
                 loss_batch.append(loss.detach().cpu().item())
-                ##loss1_batch.append(loss1.detach().cpu().item())
-                ##loss2_batch.append(loss2.detach().cpu().item())
+                loss1_batch.append(loss1.detach().cpu().item())
+                loss2_batch.append(loss2.detach().cpu().item())
 
                 metric_batch.append(metric)
 
@@ -373,8 +373,8 @@ class Model(nn.Module):
 
             loss_epochs['train'].append(np.mean(loss_batch))
 
-            ##loss1_epochs['train'].append(np.mean(loss1_batch))
-            ##loss2_epochs['train'].append(np.mean(loss2_batch))
+            loss1_epochs['train'].append(np.mean(loss1_batch))
+            loss2_epochs['train'].append(np.mean(loss2_batch))
 
             metric_epochs['train'].append(np.mean(metric_batch))
 
@@ -395,9 +395,9 @@ class Model(nn.Module):
 
             ########################## Logging and Plotting  ##########################
 
-            #print(f"=====> Epoch {epoch} : \nLoss Train = {loss_epochs['train'][-1]:.3f}  |   Loss1 Train = {loss1_epochs['train'][-1]:.3f}     |       Loss2 Train = {loss2_epochs['train'][-1]:.3f}     |   Acc Train = {100*metric_epochs['train'][-1]:.2f}%")
+            print(f"=====> Epoch {epoch} : \nLoss Train = {loss_epochs['train'][-1]:.3f}  |   Loss1 Train = {loss1_epochs['train'][-1]:.3f}     |       Loss2 Train = {loss2_epochs['train'][-1]:.3f}     |   Acc Train = {100*metric_epochs['train'][-1]:.2f}%")
             #print()
-            print(f"=====> Epoch {epoch} : \nLoss Train = {loss_epochs['train'][-1]:.3f}  |     Acc Train = {100*metric_epochs['train'][-1]:.2f}%")
+            #print(f"=====> Epoch {epoch} : \nLoss Train = {loss_epochs['train'][-1]:.3f}  |     Acc Train = {100*metric_epochs['train'][-1]:.2f}%")
             print(f"Loss Valid = {loss_epochs['valid'][-1]:.3f}  |  Acc Valid = {100*metric_epochs['valid'][-1]:.2f}%  |  Best Acc Valid = {100*max(metric_epochs['valid'][-1], best_metric_val):.2f}%")
 
 
@@ -412,8 +412,8 @@ class Model(nn.Module):
 
                 wandb_logs = {"Epoch":epoch,
                               "loss_train":loss_epochs['train'][-1],
-                              ##"loss1_train":loss1_epochs['train'][-1],
-                              ##"loss2_train":loss2_epochs['train'][-1], 
+                              "loss1_train":loss1_epochs['train'][-1],
+                              "loss2_train":loss2_epochs['train'][-1], 
                               "acc_train" : metric_epochs['train'][-1], 
                               "loss_valid" : loss_epochs['valid'][-1],
                               "acc_valid" : metric_epochs['valid'][-1],
