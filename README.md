@@ -1,6 +1,4 @@
-# Snn_delay_test
- Test_Runs
-
+Spiking Neural Networks with Dialated Convolutions, Models tested on Speech Datasets like ESC50
 
  1. Install python>=3.0
  2. Spiking jelly:
